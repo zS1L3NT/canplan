@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["CanvasCookiesModule"] },
+  "android": { "modules": ["expo.modules.canvascookies.CanvasCookiesModule"] }
+}
