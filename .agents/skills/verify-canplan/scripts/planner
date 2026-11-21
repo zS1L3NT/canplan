@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Prints the simulator app's saved planner (Documents/planner.json), or copies it to $1.
+source "$(dirname "$0")/lib.sh"
+f="$(xcrun simctl get_app_container "$(sim_udid)" "$BUNDLE_ID" data)/Documents/planner.json"
+[[ -f "$f" ]] || { echo "No planner.json yet: the app has not saved a task." >&2; exit 1; }
+if [[ -n "${1:-}" ]]; then cp "$f" "$1"; else cat "$f"; echo; fi

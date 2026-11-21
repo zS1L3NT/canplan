@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Read-only: is this checkout ready to drive? Prints one line per check and exits 1 on any failure.
+source "$(dirname "$0")/lib.sh"
+fail=0
+ok() { echo "ok   $*"; }
+bad() { echo "FAIL $*"; fail=1; }
+
+[[ -d "$APP/node_modules" ]] && ok "node_modules" || bad "node_modules missing: run scripts/setup"
+[[ -f "$APP/demo/canvas-cache.demo.json" && -f "$APP/demo/notion-tasks.json" ]] && ok "demo data" || bad "demo data missing: run scripts/setup"
+[[ -d "$APP/ios/Pods" ]] && ok "native project" || bad "ios/ not generated: run scripts/setup"
+
+if [[ "$(curl -s "localhost:$METRO_PORT/status" || true)" == "packager-status:running" ]]; then
+  pid="$(lsof -t -nP -iTCP:"$METRO_PORT" -sTCP:LISTEN | head -1)"
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+  [[ "$cwd" == "$APP" ]] && ok "Metro on $METRO_PORT serves this checkout (pid $pid)" \
+    || bad "Metro on $METRO_PORT serves $cwd, not this checkout"
+else
+  bad "Metro not running on $METRO_PORT: start scripts/metro in the background"
+fi
+
+if udid="$(sim_udid 2>/dev/null)"; then
+  state="$(xcrun simctl list devices -j | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=Object.values(JSON.parse(s).devices).flat().find(x=>x.udid===process.argv[1]);console.log(d?.state??"missing")})' "$udid")"
+  [[ "$state" == Booted ]] && ok "simulator $udid booted" || bad "simulator $udid is $state"
+  xcrun simctl get_app_container "$udid" "$BUNDLE_ID" >/dev/null 2>&1 && ok "app installed on simulator" || bad "app not installed: run scripts/build-sim"
+else
+  bad "no iPhone simulator"
+fi
+exit $fail

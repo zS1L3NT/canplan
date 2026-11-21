@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Prints the @eN ref of the first element whose snapshot line contains the given text.
+# Refs change after every UI change, so take a fresh one before each press or fill.
+# Usage: scripts/ad press "$(scripts/ref '[button] "Add"')" --settle
+"$(dirname "$0")/ad" snapshot -i 2>/dev/null | grep -F -- "$1" | head -1 | awk '{print $1}'

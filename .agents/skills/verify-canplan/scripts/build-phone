@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Only when the owner asks: builds, installs and launches the Debug app on their paired iPhone,
+# pointed at this Mac's Metro. The phone must be unlocked and on the same network.
+source "$(dirname "$0")/lib.sh"
+udid="$(phone_udid)"; team="$(team_id)"
+cd "$APP"
+# The team is passed on the command line, so the generated project is never edited.
+xcodebuild -workspace ios/Canplan.xcworkspace -scheme Canplan -configuration Debug \
+  -destination "id=$udid" -derivedDataPath "$PHONE_DERIVED" \
+  DEVELOPMENT_TEAM="$team" -allowProvisioningUpdates build -quiet
+xcrun devicectl device install app --device "$udid" "$PHONE_DERIVED/Build/Products/Debug-iphoneos/Canplan.app"
+ip="$(ipconfig getifaddr en0)"
+xcrun devicectl device process launch --device "$udid" --terminate-existing \
+  --payload-url "$BUNDLE_ID://expo-development-client/?url=http%3A%2F%2F$ip%3A$METRO_PORT" "$BUNDLE_ID"

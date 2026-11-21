@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Makes and prints a new evidence folder: build-device/evidence/<YYYYMMDD-HHMMSS>-<feature>/.
+# It is git-ignored, and cleanup never deletes it.
+source "$(dirname "$0")/lib.sh"
+d="$EVIDENCE_DIR/$(date +%Y%m%d-%H%M%S)-${1:?usage: evidence <feature>}"
+mkdir -p "$d" && echo "$d"

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Builds the Debug app for the iPhone simulator (about 4 minutes from clean) and installs it.
+# Rebuild only after a native change (app.json, a config plugin, a native dependency, modules/).
+source "$(dirname "$0")/lib.sh"
+udid="$(sim_udid)"
+cd "$APP"
+xcrun simctl boot "$udid" 2>/dev/null || true
+xcodebuild -workspace ios/Canplan.xcworkspace -scheme Canplan -configuration Debug \
+  -destination "id=$udid" -derivedDataPath "$SIM_DERIVED" build -quiet
+xcrun simctl install "$udid" "$SIM_DERIVED/Build/Products/Debug-iphonesimulator/Canplan.app"
+echo "Installed on simulator $udid"

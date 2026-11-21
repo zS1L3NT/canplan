@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs agent-device (https://github.com/callstack/agent-device) against the iPhone simulator.
+# Every tap, text entry, alert and screenshot goes through this.
+#   - In T3 Code: call the device_open tool for the simulator and export the command it returns
+#     as AGENT_DEVICE, so the owner watches in the Device panel. It is already bound to the device.
+#   - Elsewhere: this runs the pinned npm release, bound to the simulator from `sim_udid`.
+source "$(dirname "$0")/lib.sh"
+if [[ -n "${AGENT_DEVICE:-}" ]]; then
+  exec "$AGENT_DEVICE" "$@"
+fi
+exec npx -y "agent-device@$AGENT_DEVICE_VERSION" --platform ios --udid "$(sim_udid)" "$@"

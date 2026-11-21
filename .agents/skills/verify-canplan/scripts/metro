@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Starts Metro for this checkout on $CANPLAN_METRO_PORT (default 8082). Runs in the foreground:
+# start it in the background and stop it by its PID. Ready when `doctor` says Metro is running.
+source "$(dirname "$0")/lib.sh"
+cd "$APP"
+if lsof -nP -iTCP:"$METRO_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Port $METRO_PORT is taken. Run doctor: if it is this checkout's Metro, reuse it." >&2
+  exit 1
+fi
+exec npx expo start --dev-client --port "$METRO_PORT" --host lan
