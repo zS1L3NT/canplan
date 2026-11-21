@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# One-time setup of a fresh checkout or worktree: deps, demo data, native project.
+# Usage: setup [--skip-native]
+source "$(dirname "$0")/lib.sh"
+cd "$APP"
+
+# Plain `npm ci` fails with ERESOLVE (react-dom wants react 19.3.1; the app pins 19.3.0).
+[[ -d node_modules ]] || npm ci --legacy-peer-deps
+
+# Metro cannot bundle without these files: store.tsx and settings.tsx require() them.
+if [[ ! -f demo/canvas-cache.demo.json || ! -f demo/notion-tasks.json ]]; then
+  src="$(demo_source)"
+  if [[ -f "$src/canvas-cache.demo.json" && -f "$src/notion-tasks.json" && "$src" != "$APP/demo" ]]; then
+    mkdir -p demo && cp "$src/canvas-cache.demo.json" "$src/notion-tasks.json" demo/
+    echo "Copied demo data from $src"
+  else
+    echo "Missing demo/canvas-cache.demo.json or demo/notion-tasks.json, and no copy at $src." >&2
+    echo "They hold the owner's real data and are never committed. Ask the owner for them." >&2
+    exit 1
+  fi
+fi
+
+[[ "${1:-}" == "--skip-native" ]] && exit 0
+# ios/ is generated (Continuous Native Generation) and git-ignored. Never edit it by hand.
+if [[ ! -d ios/Pods ]]; then
+  npx expo prebuild -p ios --no-install
+  (cd ios && pod install)
+fi
+echo "Setup done."

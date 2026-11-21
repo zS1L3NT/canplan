@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Model-checks model/ColdLaunch.tla with TLC, one run per rule and mode.
+# Usage: check [--out DIR]
+# Exit 0 when every result matches model/expected.txt, 1 otherwise.
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")/.." && pwd)"
+out="${TMPDIR:-/tmp}/canplan-cold-launch-$$"
+[[ "${1:-}" == "--out" ]] && out="$2"
+mkdir -p "$out"
+
+# Pinned TLA+ tools (v1.7.4), downloaded once and checked by hash.
+jar_dir="${XDG_CACHE_HOME:-$HOME/.cache}/canplan-tla"
+jar="$jar_dir/tla2tools-1.7.4.jar"
+sha="936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
+if [[ ! -f "$jar" ]]; then
+  mkdir -p "$jar_dir"
+  curl -sSLf -o "$jar.part" https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+  mv "$jar.part" "$jar"
+fi
+echo "$sha  $jar" | shasum -a 256 -c --status || { echo "tla2tools hash mismatch: $jar" >&2; exit 1; }
+command -v java >/dev/null || { echo "java (11+) is required" >&2; exit 1; }
+
+rules=(TypeOK TasksKept SeenKept DueChangeShown ScreenMatchesDisk)
+modes=(current:FALSE guarded:TRUE)
+results="$out/results.txt"
+: > "$results"
+
+for m in "${modes[@]}"; do
+  mode="${m%%:*}"; guard="${m##*:}"
+  for rule in "${rules[@]}"; do
+    dir="$out/$mode-$rule"
+    mkdir -p "$dir"
+    cp "$here/model/ColdLaunch.tla" "$dir/"
+    printf 'SPECIFICATION Spec\nCONSTANT GuardLoaded = %s\nINVARIANT %s\n' "$guard" "$rule" > "$dir/ColdLaunch.cfg"
+    (cd "$dir" && java -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers 1 -deadlock -metadir "$dir/states" \
+      -config ColdLaunch.cfg ColdLaunch.tla > tlc.out 2>&1) || true
+    if grep -q "Model checking completed. No error has been found" "$dir/tlc.out"; then
+      verdict=holds
+    elif grep -q "is violated" "$dir/tlc.out"; then
+      verdict=breaks
+    else
+      verdict=error
+    fi
+    echo "$mode $rule $verdict" >> "$results"
+  done
+done
+
+cat "$results"
+echo "TLC output per run: $out/<mode>-<rule>/tlc.out"
+if diff -u "$here/model/expected.txt" "$results"; then
+  echo "OK: results match model/expected.txt"
+else
+  echo "MISMATCH: results differ from model/expected.txt (see diff above)" >&2
+  exit 1
+fi

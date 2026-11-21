@@ -1,0 +1,10 @@
+current TypeOK holds
+current TasksKept breaks
+current SeenKept breaks
+current DueChangeShown breaks
+current ScreenMatchesDisk breaks
+guarded TypeOK holds
+guarded TasksKept holds
+guarded SeenKept holds
+guarded DueChangeShown holds
+guarded ScreenMatchesDisk holds
